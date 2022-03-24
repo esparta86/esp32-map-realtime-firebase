@@ -20,12 +20,12 @@
 
 #define DATABASE_URL "https://wifi-arduino-esp32.firebaseio.com/" 
 
-const char* googleApiKey = "123AIzaSyBz-ov1S4NJZxZ-0WXf0l89OyfF1xmBB9A45";
-const char* firebaseApiKey = "123AIzaSyBwL-A3smdyKK5eGP4YkCdsaAsYP3Vx42k45";
-const char* ssid = "NIDAIME";
+const char* googleApiKey = "";
+const char* firebaseApiKey = "";
+const char* ssid = "";
 const char* passwd = "";
 //const char* HOSTFIREBASE = "wifi-arduino-esp32.firebaseio.com";
-const char* HOSTFIREBASE = "wifi-arduino-esp32-default-rtdb.firebaseio.com";
+const char* HOSTFIREBASE = "";
 
 //unsigned char* LOC_PRECISION =7;
 WifiLocation location(googleApiKey);
@@ -54,11 +54,19 @@ unsigned long sendDataPrevMillis = 0;
 int count = 0;
 bool signupOK = false;
 
+String timenow;
+FirebaseJson json;
+FirebaseJson json2;
+FirebaseData fbdo2;
 
+const long  gmtOffset_sec = -21600;
+const int   daylightOffset_sec = 0;
+const char* ntpServer = "pool.ntp.org";
 
 // Set time via NTP, as required for x.509 validation
-void setClock () {
-    configTime (0, 0, "pool.ntp.org", "time.nist.gov");
+String setClock () {
+    //configTime (0, 0, "pool.ntp.org", "time.nist.gov");
+    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
 
     Serial.print ("Waiting for NTP time sync: ");
     time_t now = time (nullptr);
@@ -72,6 +80,8 @@ void setClock () {
     Serial.print ("\n");
     Serial.print ("Current time: ");
     Serial.print (asctime (&timeinfo));
+
+    return (String)""+time(&now);
 }
 
 
@@ -130,24 +140,26 @@ void setup() {
 
 void loop() {
 
-  /*setClock ();
-  loc = location.getGeoFromWiFi();
-
-  Serial.println("Location request data");
-  Serial.println(location.getSurroundingWiFiJson());
-  Serial.println("Latitude: " + String(loc.lat, 7));
-  Serial.println("Longitude: " + String(loc.lon, 7));
-  Serial.println("Accuracy: " + String(loc.accuracy));
-
-  peticionPut();
+  
+ // peticionPut();
 
   delay(15000);
- */
+ 
 
   if (Firebase.ready() && signupOK && (millis() - sendDataPrevMillis > 15000 || sendDataPrevMillis == 0)){
     sendDataPrevMillis = millis();
+
+     timenow = setClock ();
+     loc = location.getGeoFromWiFi();
+
+     Serial.println("Location request data");
+     Serial.println(location.getSurroundingWiFiJson());
+     Serial.println("Latitude: " + String(loc.lat, 7));
+     Serial.println("Longitude: " + String(loc.lon, 7));
+     Serial.println("Accuracy: " + String(loc.accuracy));
+
     // Write an Int number on the database path test/int
-    if (Firebase.RTDB.setInt(&fbdo, "test/int", count)){
+    /* if (Firebase.RTDB.setInt(&fbdo, "test/int", count)){
       Serial.println("PASSED");
       Serial.println("PATH: " + fbdo.dataPath());
       Serial.println("TYPE: " + fbdo.dataType());
@@ -168,9 +180,29 @@ void loop() {
       Serial.println("FAILED");
       Serial.println("REASON: " + fbdo.errorReason());
     }
+     */
+     
+    //json2.add("child_of_002",123.56);
+    json.add("Latitud",String(loc.lat, 7));
+    json.add("Longitude",String(loc.lon, 7));
+    json.add("Accuracy",String(loc.accuracy, 7));
+    json.add("timestamp",timenow);
+    
+
+    if (Firebase.RTDB.pushJSON(&fbdo2, "/maps/tracking", &json)) {
+      Serial.println(fbdo2.dataPath());
+      Serial.println(fbdo2.pushName());
+      Serial.println(fbdo2.dataPath() + "/"+ fbdo2.pushName());
+      
+    }else{
+      Serial.println(fbdo2.errorReason());
+    }
+
+    
   }
 
 }
+
 
 
 String getMac()
