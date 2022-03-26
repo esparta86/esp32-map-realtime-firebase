@@ -111,7 +111,7 @@ void setup() {
   Serial.println("Accuracy: " + String(loc2.accuracy));
 
   // Obtenemos la MAC como cadena de texto
-  macStr = getMac();
+  macStr = obtenerMac();
  
   Serial.print("MAC ESP32: ");
   Serial.println(macStr);
@@ -158,38 +158,18 @@ void loop() {
      Serial.println("Longitude: " + String(loc.lon, 7));
      Serial.println("Accuracy: " + String(loc.accuracy));
 
-    // Write an Int number on the database path test/int
-    /* if (Firebase.RTDB.setInt(&fbdo, "test/int", count)){
-      Serial.println("PASSED");
-      Serial.println("PATH: " + fbdo.dataPath());
-      Serial.println("TYPE: " + fbdo.dataType());
-    }
-    else {
-      Serial.println("FAILED");
-      Serial.println("REASON: " + fbdo.errorReason());
-    }
-    count++;
-    
-    // Write an Float number on the database path test/float
-    if (Firebase.RTDB.setFloat(&fbdo, "test/float", 0.01 + random(0,100))){
-      Serial.println("PASSED");
-      Serial.println("PATH: " + fbdo.dataPath());
-      Serial.println("TYPE: " + fbdo.dataType());
-    }
-    else {
-      Serial.println("FAILED");
-      Serial.println("REASON: " + fbdo.errorReason());
-    }
-     */
      
     //json2.add("child_of_002",123.56);
     json.add("Latitud",String(loc.lat, 7));
     json.add("Longitude",String(loc.lon, 7));
     json.add("Accuracy",String(loc.accuracy, 7));
     json.add("timestamp",timenow);
+
+    String keyPath = "/maps/"+macStr+"/";
+    keyPath +=timenow;
     
 
-    if (Firebase.RTDB.pushJSON(&fbdo2, "/maps/tracking", &json)) {
+    if (Firebase.RTDB.pushJSON(&fbdo2, keyPath, &json)) {
       Serial.println(fbdo2.dataPath());
       Serial.println(fbdo2.pushName());
       Serial.println(fbdo2.dataPath() + "/"+ fbdo2.pushName());
@@ -205,67 +185,28 @@ void loop() {
 
 
 
-String getMac()
+
+
+String obtenerMac()
 {
+  // Obtenemos la MAC del dispositivo
   WiFi.macAddress(mac);
 
+  // Convertimos la MAC a String
   String keyMac = "";
-
   for (int i = 0; i < 6; i++)
   {
     String pos = String((uint8_t)mac[i], HEX);
     if (mac[i] <= 0xF)
       pos = "0" + pos;
     pos.toUpperCase();
-    keyMac += ":";
+    keyMac += pos;
+    if (i < 5)
+      keyMac += ":";
   }
 
+  // Devolvemos la MAC en String
   return keyMac;
 }
 
 
-void peticionPut()
-{
-  // Cerramos cualquier conexión antes de enviar una nueva petición
-  client.stop();
-  client.flush();
-  // Enviamos una petición por SSL
-    
-  if (client.connect(HOSTFIREBASE, 443)) {
-    // Petición PUT JSON
-    String toSend = "PUT /dispositivo/";
-    toSend += macStr;
-    toSend += ".json HTTP/1.1\r\n";
-    toSend += "Host:";
-    toSend += HOSTFIREBASE;
-    toSend += "\r\n" ;
-    toSend += "Content-Type: application/json\r\n";
-    String payload = "{\"lat\":";
-    payload += String(loc.lat, 7);
-    payload += ",";
-    payload += "\"lon\":";
-    payload += String(loc.lon, 7);
-    payload += ",";
-    payload += "\"prec\":";
-    payload += String(loc.accuracy);
-    payload += ",";
-    payload += "\"nombre\": \"";
-    payload += nombreComun;
-    payload += "\"}";
-    payload += "\r\n";
-    toSend += "Content-Length: " + String(payload.length()) + "\r\n";
-    toSend += "\r\n";
-    toSend += payload;
-    Serial.println(toSend);
-    client.println(toSend);
-    client.println();
-    client.flush();
-    client.stop();
-    Serial.println("Todo OK");
-  } else {
-    // Si no podemos conectar
-    client.flush();
-    client.stop();
-    Serial.println("Algo ha ido mal");
-  }
-}
